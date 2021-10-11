@@ -24,6 +24,8 @@ lastResult = TestResult.TestResult("","","",None, None, None)
 camera = cv2.VideoCapture(0)  # use 0 for web camera
 font = cv2.FONT_HERSHEY_SIMPLEX
 bp = Blueprint('checker', __name__)
+app = Flask(__name__)
+
 
 def decode(im) : 
     # Find barcodes and QR codes
@@ -53,7 +55,7 @@ def gen_frames():  # generate frame by frame from camera global
                     try:
                         status = "processing"
                         lastResult.setQrCode( payload )
-                        t = PassAnalyser.PassAnalyser(lastResult)
+                        t = PassAnalyser.PassAnalyser(app, lastResult)
                         t.start()
 
                     except Exception as e:

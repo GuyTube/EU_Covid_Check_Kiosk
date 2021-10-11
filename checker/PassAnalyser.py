@@ -17,9 +17,10 @@ from . import TestResult
 from . import dateUtils
 
 class PassAnalyser (threading.Thread):
-    def __init__(self, lastResult):
+    def __init__(self, app, lastResult):
         threading.Thread.__init__(self)
         self.lastResult = lastResult
+        self.app = app
 
     def run(self):
         
@@ -135,10 +136,10 @@ class PassAnalyser (threading.Thread):
     def printAndSay(self,sentence):
         print(sentence)
         if os.name == 'posix':
-            filename = os.path.join(app.root_path, '1.wav')
+            filename = os.path.join(self.app.root_path, '1.wav')
             os.system("pico2wave -l fr-FR -w="+filename+"  \""+sentence+"\"")
             time.sleep(0.5)
-            os.system("aplay "+filename)
+            os.system("/usr/bin/aplay "+filename)
         if os.name == 'nt':
             speaker.Speak(sentence)
 
