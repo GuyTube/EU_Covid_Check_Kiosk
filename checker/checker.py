@@ -20,11 +20,12 @@ from . import PassAnalyser
 #pip install pandas //csv
 #pip install pythoncom // Windows uniquement
 
+app = Flask(__name__)
+
 lastResult = TestResult.TestResult("","","",None, None, None)
 camera = cv2.VideoCapture(0)  # use 0 for web camera
 font = cv2.FONT_HERSHEY_SIMPLEX
 bp = Blueprint('checker', __name__)
-app = Flask(__name__)
 
 
 def decode(im) : 
