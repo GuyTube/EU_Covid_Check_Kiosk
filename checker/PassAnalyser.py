@@ -12,7 +12,12 @@ from cose.messages import CoseMessage
 from cose.headers import Algorithm, KID
 from cose.keys import cosekey, ec2, keyops, curves
 from typing import Dict, Tuple, Optional
-
+from cryptography import x509
+from cryptography import hazmat
+from pyasn1.codec.ber import decoder as asn1_decoder
+from cryptojwt import jwk as cjwtk
+from cryptojwt import utils as cjwt_utils
+from playsound import playsound
 
 if os.name == 'nt':  # sys.platform == 'win32':
     import pythoncom
@@ -22,6 +27,7 @@ if os.name == 'nt':  # sys.platform == 'win32':
 from . import CovidCertif
 from . import TestResult
 from . import dateUtils
+from . import PadManager
 
 DEFAULT_CERTIFICATE_DB_JSON = 'certs/Digital_Green_Certificate_Signing_Keys.json'
 
@@ -33,24 +39,41 @@ class PassAnalyser (threading.Thread):
         self.app = app
 
     def run(self):
-        
+        self.special_cases = json.loads(self.app.config.get("SPECIAL_CASES"))
+            
+        self.pm = None
+        try:
+            currDate = datetime.strftime(datetime.now(), "%Y-%m-%d")
+            entete="Entrées du "+currDate
+            padId="pass-log-"+currDate
+            self.pm = PadManager.PadManager(self.app.config.get("PAD_HTTP_URL"),self.app.config.get("API_KEY"), self.app.config.get("API_VERSION"), entete, padId)
+        except Exception as e:
+            print("error creating pad", e)
+            
         resultHTML = ""
         time.sleep(0.5)
         self.testCertif( self.lastResult.qrCode )
         for t in self.lastResult.texte :
             resultHTML=resultHTML+t+"<br/>"
 
-        self.lastResult.setResultHTML( resultHTML )   
+        self.lastResult.setResultHTML( resultHTML )
 
+        if self.pm != None :
+            self.logToPad(self.lastResult.getPadLog())
+        
         for t in self.lastResult.texte :
             self.printAndSay(t)
 
         time.sleep(10)
         self.lastResult.reset()
 
+    def logToPad(self, t) :
+        self.pm.append(t)
+        
     #https://ec.europa.eu/health/sites/default/files/ehealth/docs/covid-certificate_json_specification_en.pdf
     def testCertif(self, qrcode):
-     
+
+        checkSignature = self.app.config.get("CHECK_SIGNATURE"=="true")
         texte = []
         decode45 = base45.b45decode(qrcode)
         decompressed = zlib.decompress(decode45)
@@ -58,7 +81,7 @@ class PassAnalyser (threading.Thread):
         key = self.find_key(cose.phdr[KID], DEFAULT_CERTIFICATE_DB_JSON)
         validSignature = False
         if key:
-            validSignature = self.verify_signature(cose_msg, key)
+            validSignature = self.verify_signature(cose, key)
         else:
             print("Skip verify as no key found from database")
         jsons = cbor2.loads(cose.payload)
@@ -68,11 +91,15 @@ class PassAnalyser (threading.Thread):
         print ( resultJSON )
         resultJSON = resultJSON.replace("\n","<BR>").replace(" ","&nbsp;&nbsp;");
         self.lastResult.setResultJSON( resultJSON )
-        certif = CovidCertif.CovidCertif(name["gn"], name["fn"], name["gnt"], name["fnt"], root["dob"]) 
+        certif = CovidCertif.CovidCertif(name["gn"], name["fn"], name["gnt"], name["fnt"], root["dob"])
         passValide = False
 
-        if not validSignature:
-            texte.append("Ce certificat est un faux. Veuillez quitter le bâtiment")
+        self.is_special_case(certif.surname, certif.name, certif.dateOfBirth)
+
+        if not validSignature and checkSignature:
+            texte.append("Ce certificat est un faux. La loi ne vous autorise pas à rester dans ce bâtiment")
+            self.lastResult.setCovidCertif( certif )
+            self.lastResult.setStatus("invalid")
             self.lastResult.setTexte( texte )  
             return
         
@@ -139,10 +166,8 @@ class PassAnalyser (threading.Thread):
 
         if certif.getType() == "recovery":
             lastRecovery = certif.getLastRecovery()
-            texte.append("Votre certificat de rétablissement est valide du "+dateUtils.getDateReadable(lastRecovery.getValidFrom())+" au "+lastRecovery.getValidTo()+".")
+            texte.append("Votre certificat de rétablissement est valide du "+dateUtils.getDateReadable(lastRecovery.getValidFrom())+" au "+dateUtils.getDateReadable(lastRecovery.getValidTo())+".")
             if currDate <= lastRecovery.getValidTo() : 
-                texte.append("Votre certificat est valide depuis le "+dateUtils.getDateReadable(lastRecovery.getValidFrom())+".")
-                texte.append("Selon la législation actuelle votre passe sanitaire est valide jusqu'au "+dateUtils.getDateReadable(lastRecovery.getValidTo())+".")
                 passValide = True
                 self.lastResult.setStatus("valid")
             else :
@@ -150,37 +175,36 @@ class PassAnalyser (threading.Thread):
                 texte.append("Votre certificat de rétablissement n'est plus valide depuis le "+dateUtils.getDateReadable(lastRecovery.getValidTo())+".")
 
         if self.lastResult.status == "invalid" :
-            texte.append("La législation vous impose de quitter le bâtiment. Si vous choisissez de rester vous risquez une amende "+
-                         "en cas de contrôle. L'association TechTicAndCo décline toute responsabilité.")
+            texte.append("La législation vous interdit de rester dans ce bâtiment. Si toutefois vous choisissez de rester les responsables de l'association,"
+                         " qui ne peuvent vous contraindre physiquement à partir, décline toute responsabilité en cas de contrôle et ne cautionne pas votre attitude.")
         self.lastResult.setTexte( texte )  
 
     def printAndSay(self,sentence):
         print(sentence)
-        if os.name == 'posix':
-            filename = os.path.join(self.app.root_path, '1.wav')
-            os.system("pico2wave -l fr-FR -w="+filename+"  \""+sentence+"\"")
-            time.sleep(0.5)
-            os.system("/usr/bin/aplay "+filename)
-        if os.name == 'nt':
-            speaker.Speak(sentence)
+        if self.app.config.get("TALKACTIVE") :
+            if os.name == 'posix':
+                filename = os.path.join(self.app.root_path, '1.wav')
+                os.system("pico2wave -l fr-FR -w="+filename+"  \""+sentence+"\"")
+                time.sleep(0.5)
+                playsound(filename)
+            if os.name == 'nt':
+                speaker.Speak(sentence)
 
+    def playMusic(self,filename):
+        playsound(filename)
+        
     def verify_signature(self, cose_msg: CoseMessage, key: cosekey.CoseKey) -> bool:
         cose_msg.key = key
         if not cose_msg.verify_signature():
-            log.warning("Signature does not verify with key ID {0}!".format(key.kid.decode()))
+            print("Signature does not verify with key ID {0}!".format(key.kid.decode()))
             return False
 
-        log.info("Signature verified ok")
+        print("Signature verified ok")
 
         return cose_msg.verify_signature()
 
 
     def find_key(self, key: Algorithm, keys_file: str) -> Optional[cosekey.CoseKey]:
-        if False:
-            # Test read a PEM-key
-            jwt_key = self.read_cosekey_from_pem_file("certs/Finland.pem")
-            # pprint(jwt_key)
-            # pprint(jwt_key.kid.decode())
 
         # Read the JSON-database of all known keys
         with open(keys_file, encoding='utf-8') as f:
@@ -190,7 +214,7 @@ class PassAnalyser (threading.Thread):
         for key_id, key_data in known_keys.items():
             key_id_binary = base64.b64decode(key_id)
             if key_id_binary == key:
-                log.info("Found the key from DB!")
+                print("Found the key from DB!")
                 # pprint(key_data)
                 # check if the point is uncompressed rather than compressed
                 x, y = self.public_ec_key_points(base64.b64decode(key_data['publicKeyPem']))
@@ -285,3 +309,9 @@ class PassAnalyser (threading.Thread):
         jwk_dict = jwk.serialize(private=False)
 
         return cosekey_from_jwk_dict(jwk_dict)
+
+    def is_special_case(self, surname, name, dob) :
+        for pers in self.special_cases:
+            if pers['surname'].casefold() == surname.casefold() and pers['name'].casefold() == name.casefold() and pers['date-of-birth']==dob :
+                self.playMusic(pers['music'])
+        return False

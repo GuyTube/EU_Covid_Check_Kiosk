@@ -2,7 +2,9 @@ from flask import Blueprint, Flask, render_template, Response, send_file, reques
 import cv2
 import pyzbar.pyzbar as pyzbar
 import time
+from datetime import datetime   
 import sqlite3
+import os
 from checker.db import get_db
 from . import CovidCertif
 from . import dateUtils
@@ -19,13 +21,16 @@ from . import PassAnalyser
 #pip install pywin32 // pour windows uniquement
 #pip install pandas //csv
 #pip install pythoncom // Windows uniquement
+#pip install pyasn1
+#pip install cryptojwt
 
 app = Flask(__name__)
 
-lastResult = TestResult.TestResult("","","",None, None, None)
+lastResult = TestResult.TestResult("","","",None, None, None, None)
 camera = cv2.VideoCapture(0)  # use 0 for web camera
 font = cv2.FONT_HERSHEY_SIMPLEX
 bp = Blueprint('checker', __name__)
+config = app.config.from_pyfile(os.path.join(".", "config/app.conf"), silent=False)
 
 
 def decode(im) : 
@@ -56,6 +61,7 @@ def gen_frames():  # generate frame by frame from camera global
                     try:
                         status = "processing"
                         lastResult.setQrCode( payload )
+                        lastResult.date = datetime.now()
                         t = PassAnalyser.PassAnalyser(app, lastResult)
                         t.start()
 
@@ -80,11 +86,11 @@ def result_img():
 def get_image():
     imgtype = request.args.get('type')
     if imgtype == 'valid':
-       filename = 'validpass.png'
+       filename = app.config.get("VALID_IMAGE")
     elif imgtype == 'invalid':
-       filename = 'invalidpass.png'
+       filename = app.config.get("INVALID_IMAGE")
     elif imgtype == 'processing':
-        filename = 'processing.png'
+        filename = app.config.get("PROCESSING_IMAGE")
     else:
        filename = ""
     return send_file(filename, mimetype='image/png')
@@ -100,6 +106,21 @@ def video_feed():
 def index():
     return render_template('index.html')
 
+@bp.route('/testPad')
+def testPad():
+    from . import PadManager
+    currDate = datetime.datetime.strftime(datetime.datetime.now(), "%Y-%m-%d")
+
+    entete="Entrées du "+currDate
+    padId="pass-log-"+currDate
+    
+    pm = PadManager.PadManager(app.config.get("PAD_HTTP_URL"),app.config.get("API_KEY"), app.config.get("API_VERSION"), entete, padId)
+    pm.append("2021-10-15T01:01:01 BOCKENFUSEAU MARCEL")
+    return "Testing pad "+pm.padId
+
+@bp.route('/test')
+def test():
+    return app.config.get("SPECIAL_CASES")
 
 @bp.route("/result_txt")
 def code():
@@ -136,7 +157,7 @@ def user_thilab():
             ).fetchone()
 
             if user == None :
-                userTxt =  "Vous n'êtes pas membre de l'association TechTicAndCo. Vous pouvez adhérer à tout moment sur notre site internet."
+                userTxt =  "Vous n'êtes pas membre de l'association "+app.config.get("ASSOCIATION_NAME")+". Vous pouvez adhérer à tout moment sur notre site internet."
             else :
                 if user["isMember"] == 1 :
                     userTxt = "Votre cotisation est à jour";
