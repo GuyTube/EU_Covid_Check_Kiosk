@@ -23,6 +23,7 @@ from . import PassAnalyser
 #pip install pythoncom // Windows uniquement
 #pip install pyasn1
 #pip install cryptojwt
+#pip install playsound==1.2.2 // for python >3.8
 
 app = Flask(__name__)
 
@@ -31,7 +32,6 @@ camera = cv2.VideoCapture(0)  # use 0 for web camera
 font = cv2.FONT_HERSHEY_SIMPLEX
 bp = Blueprint('checker', __name__)
 config = app.config.from_pyfile(os.path.join(".", "config/app.conf"), silent=False)
-
 
 def decode(im) : 
     # Find barcodes and QR codes
