@@ -152,8 +152,8 @@ def user_thilab():
             user = db.execute(
                 'SELECT id, name, surname, dateOfBirth, isMember '
                 ' FROM thilab_users '
-                ' WHERE upper(name)=upper(?) and upper(surname)=upper(?) and dateOfBirth=?',
-                (certif.name, certif.surname, certif.dateOfBirth)
+                ' WHERE upper(name)=upper(?) and upper(surname)=upper(?) ',
+                (certif.name, certif.surname)
             ).fetchone()
 
             if user == None :
