@@ -66,6 +66,9 @@ class PassAnalyser (threading.Thread):
         fullText = " ".join(self.lastResult.texte)
         self.printAndSay(fullText)
 
+        while pygame.mixer.get_busy():
+            time.sleep(0.1)
+
         time.sleep(10)
         pygame.mixer.music.fadeout(500)
 
