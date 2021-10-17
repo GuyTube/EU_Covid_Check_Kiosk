@@ -67,7 +67,7 @@ def gen_frames():  # generate frame by frame from camera global
 
                     except Exception as e:
                         print("error decoding", e)
-        
+            frame = cv2.flip(frame,1)
             ret, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
             yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')  # concat frame one by one and show result        

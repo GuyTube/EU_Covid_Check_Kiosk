@@ -67,6 +67,8 @@ class PassAnalyser (threading.Thread):
             self.printAndSay(t)
 
         time.sleep(10)
+        pygame.mixer.music.fadeout(500)
+
         self.lastResult.reset()
 
     def logToPad(self, t) :
@@ -192,9 +194,10 @@ class PassAnalyser (threading.Thread):
             if os.name == 'nt':
                 speaker.Speak(sentence)
 
-    def playMusic(self,filename):
+    def playMusic(self,filename,vol=1.0):
         pygame.mixer.music.load(filename)
-        pygame.mixer.music.play(-1)
+        pygame.mixer.music.set_volume(vol)
+        pygame.mixer.music.play(loops=0)
         
     def verify_signature(self, cose_msg: CoseMessage, key: cosekey.CoseKey) -> bool:
         cose_msg.key = key
@@ -316,5 +319,5 @@ class PassAnalyser (threading.Thread):
     def is_special_case(self, surname, name, dob) :
         for pers in self.special_cases:
             if pers['surname'].casefold() == surname.casefold() and pers['name'].casefold() == name.casefold() and pers['date-of-birth']==dob :
-                self.playMusic(pers['music'])
+                self.playMusic(pers['music'],0.5)
         return False
