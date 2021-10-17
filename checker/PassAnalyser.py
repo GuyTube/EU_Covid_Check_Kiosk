@@ -17,7 +17,7 @@ from cryptography import hazmat
 from pyasn1.codec.ber import decoder as asn1_decoder
 from cryptojwt import jwk as cjwtk
 from cryptojwt import utils as cjwt_utils
-from playsound import playsound
+import pygame
 
 if os.name == 'nt':  # sys.platform == 'win32':
     import pythoncom
@@ -37,6 +37,8 @@ class PassAnalyser (threading.Thread):
         threading.Thread.__init__(self)
         self.lastResult = lastResult
         self.app = app
+        pygame.init()
+
 
     def run(self):
         self.special_cases = json.loads(self.app.config.get("SPECIAL_CASES"))
@@ -186,12 +188,13 @@ class PassAnalyser (threading.Thread):
                 filename = os.path.join(self.app.root_path, '1.wav')
                 os.system("pico2wave -l fr-FR -w="+filename+"  \""+sentence+"\"")
                 time.sleep(0.5)
-                playsound(filename)
+                self.playMusic(filename)
             if os.name == 'nt':
                 speaker.Speak(sentence)
 
     def playMusic(self,filename):
-        playsound(filename)
+        pygame.mixer.music.load(filename)
+        pygame.mixer.music.play(-1)
         
     def verify_signature(self, cose_msg: CoseMessage, key: cosekey.CoseKey) -> bool:
         cose_msg.key = key
