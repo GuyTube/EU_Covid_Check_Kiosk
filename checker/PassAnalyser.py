@@ -62,9 +62,9 @@ class PassAnalyser (threading.Thread):
 
         if self.pm != None :
             self.logToPad(self.lastResult.getPadLog())
-        
-        for t in self.lastResult.texte :
-            self.printAndSay(t)
+
+        fullText = " ".join(self.lastResult.texte)
+        self.printAndSay(fullText)
 
         time.sleep(10)
         pygame.mixer.music.fadeout(500)
@@ -189,12 +189,14 @@ class PassAnalyser (threading.Thread):
             if os.name == 'posix':
                 filename = os.path.join(self.app.root_path, '1.wav')
                 os.system("pico2wave -l fr-FR -w="+filename+"  \""+sentence+"\"")
-                time.sleep(0.5)
+                time.sleep(1)
                 self.playMusic(filename)
             if os.name == 'nt':
                 speaker.Speak(sentence)
 
-    def playMusic(self,filename,vol=1.0):
+    def playMusic(self,filename,vol=1.0,wait=False):
+        while wait and pygame.mixer.get_busy() :
+            time.sleep(0.1)
         pygame.mixer.music.load(filename)
         pygame.mixer.music.set_volume(vol)
         pygame.mixer.music.play(loops=0)
