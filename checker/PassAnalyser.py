@@ -193,7 +193,7 @@ class PassAnalyser (threading.Thread):
                 filename = os.path.join(self.app.root_path, '1.wav')
                 os.system("pico2wave -l fr-FR -w="+filename+"  \""+sentence+"\"")
                 time.sleep(1)
-                self.playMusic(filename)
+                self.playSound(filename)
             if os.name == 'nt':
                 speaker.Speak(sentence)
 
@@ -203,6 +203,11 @@ class PassAnalyser (threading.Thread):
         pygame.mixer.music.load(filename)
         pygame.mixer.music.set_volume(vol)
         pygame.mixer.music.play(loops=0)
+        
+    def playSound(self, filename, vol=1.0):
+        s = pygame.mixer.Sound(filename)
+        s.set_volume(vol)
+        s.play()
         
     def verify_signature(self, cose_msg: CoseMessage, key: cosekey.CoseKey) -> bool:
         cose_msg.key = key
@@ -324,5 +329,6 @@ class PassAnalyser (threading.Thread):
     def is_special_case(self, surname, name, dob) :
         for pers in self.special_cases:
             if pers['surname'].casefold() == surname.casefold() and pers['name'].casefold() == name.casefold() and pers['date-of-birth']==dob :
-                self.playMusic(pers['music'],0.5)
+                print( "Playing music : "+pers['music'])
+                self.playMusic(pers['music'],0.2)
         return False
