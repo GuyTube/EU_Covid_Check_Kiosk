@@ -80,7 +80,7 @@ class PassAnalyser (threading.Thread):
     #https://ec.europa.eu/health/sites/default/files/ehealth/docs/covid-certificate_json_specification_en.pdf
     def testCertif(self, qrcode):
 
-        checkSignature = self.app.config.get("CHECK_SIGNATURE"=="true")
+        checkSignature = self.app.config.get("CHECK_SIGNATURE")=="true"
         texte = []
         decode45 = base45.b45decode(qrcode)
         decompressed = zlib.decompress(decode45)
@@ -188,7 +188,7 @@ class PassAnalyser (threading.Thread):
 
     def printAndSay(self,sentence):
         print(sentence)
-        if self.app.config.get("TALKACTIVE") :
+        if self.app.config.get("TALKACTIVE")=="true" :
             if os.name == 'posix':
                 filename = os.path.join(self.app.root_path, '1.wav')
                 os.system("pico2wave -l fr-FR -w="+filename+"  \""+sentence+"\"")
