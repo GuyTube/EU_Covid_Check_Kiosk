@@ -53,11 +53,11 @@ app.config['SECURITY_PASSWORD_SALT'] = 'kdfkdsfj'
 # Replace this with your own "from" address
 app.config['SECURITY_EMAIL_SENDER'] = 'no-reply@example.com'
 # Replace the next five lines with your own SMTP server settings
-app.config['MAIL_SERVER'] = 'smtp.free.fr'
+app.config['MAIL_SERVER'] = '******'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USE_SSL'] = True
-app.config['MAIL_USERNAME'] = 'morel.ph@free.fr'
-app.config['MAIL_PASSWORD'] = 'jcmbmf..22sSt'
+app.config['MAIL_USERNAME'] = '*****'
+app.config['MAIL_PASSWORD'] = '******'
 
 # Initialize Flask-Mail and SQLAlchemy
 mail = Mail(app)
