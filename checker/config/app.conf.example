@@ -1,0 +1,11 @@
+PAD_HTTP_URL="http://pad.xxxxxx.fr"
+VALID_IMAGE = "validpass.png"
+INVALID_IMAGE = "invalidpass.png"
+PROCESSING_IMAGE = "processing.png"
+API_VERSION = "1.2.12"
+API_KEY = "YOURKEY"
+ASSOCIATION_NAME_VOICE = "TotoAndCo"
+ASSOCIATION_NAME = "Toto&Co"
+CHECK_SIGNATURE="true"
+TALKACTIVE="true"
+SPECIAL_CASES='[{"surname":"TOTO","name":"TATA","date-of-birth":"1971-12-21","music":"marseillaise.wav"},{"surname":"TITI","name":"TUTU","date-of-birth":"1960-06-25","music":"marseillaise.wav"}]'
